@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>STEAM Навигация</title>
+    <style>
+      :root { --bg:#0b1220; --panel:#111a2e; --card:#0f1930; --text:#e8eefc; --muted:#a9b7db; --accent:#6aa7ff; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+      .app { display:flex; min-height:100vh; }
+      .sidebar { width: 280px; background:var(--panel); padding:16px; border-right: 1px solid rgba(255,255,255,.08); }
+      .brand { font-weight:700; letter-spacing:.2px; margin-bottom:14px; }
+      .sub { color:var(--muted); font-size:13px; margin-bottom:14px; line-height:1.35; }
+      .nav { display:flex; flex-direction:column; gap:8px; }
+      .btn {
+        width:100%; text-align:left; padding:12px 12px; border-radius:12px;
+        border: 1px solid rgba(255,255,255,.10);
+        background: rgba(255,255,255,.04); color:var(--text); cursor:pointer;
+        display:flex; justify-content:space-between; align-items:center;
+      }
+      .btn:hover { border-color: rgba(106,167,255,.45); }
+      .btn.active { outline: 2px solid rgba(106,167,255,.55); background: rgba(106,167,255,.10); }
+      .tag { font-size:12px; color:var(--muted); }
+      .main { flex:1; padding:18px; }
+      .top { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px; }
+      .title { font-size:18px; font-weight:700; }
+      .pill { padding:8px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12); color:var(--muted); font-size:12px; }
+      .card {
+        background: var(--card);
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius:16px;
+        padding:14px;
+      }
+      .cards { display:grid; grid-template-columns: 1fr; gap:12px; }
+      .row { display:flex; gap:10px; align-items:center; justify-content:space-between; }
+      .muted { color:var(--muted); font-size:13px; line-height:1.45; }
+      .link {
+        display:inline-flex; gap:8px; align-items:center;
+        text-decoration:none; color:var(--accent); font-weight:600;
+      }
+      .small { font-size:12px; color:var(--muted); margin-top:8px; }
+      @media (max-width: 820px) {
+        .sidebar { width: 220px; }
+      }
+      @media (max-width: 650px) {
+        .app { flex-direction: column; }
+        .sidebar { width:100%; border-right:none; border-bottom: 1px solid rgba(255,255,255,.08); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">📚 STEAM Навигация</div>
+        <div class="sub">Боковое меню. Позже подключим данные из бота/БД.</div>
+
+        <nav class="nav" id="nav"></nav>
+
+        <div class="small" id="tgHint"></div>
+      </aside>
+
+      <main class="main">
+        <div class="top">
+          <div class="title" id="screenTitle">Загрузка…</div>
+          <div class="pill" id="pill">offline</div>
+        </div>
+
+        <div class="cards" id="content"></div>
+      </main>
+    </div>
+
+    <script>
+      const sections = [
+        { key: "prep", label: "🧩 Подготовительный курс", desc: "Уроки с нуля: подготовка к STEAM." },
+        { key: "steam", label: "🚀 Курс STEAM", desc: "Основной курс, модули и практика." },
+        { key: "news", label: "🗞 Новости", desc: "Анонсы, обновления, события." },
+        { key: "links", label: "🔗 Полезные ссылки", desc: "Ресурсы, сервисы, материалы." },
+      ];
+
+      const navEl = document.getElementById("nav");
+      const contentEl = document.getElementById("content");
+      const titleEl = document.getElementById("screenTitle");
+      const pillEl = document.getElementById("pill");
+      const tgHintEl = document.getElementById("tgHint");
+
+      function setActive(key) {
+        document.querySelectorAll(".btn").forEach(b => b.classList.toggle("active", b.dataset.key === key));
+      }
+
+      function renderSection(key) {
+        const s = sections.find(x => x.key === key) || sections[0];
+        titleEl.textContent = s.label;
+
+        // Пока контента нет: показываем инфраструктуру
+        const cards = [
+          {
+            title: "Инфраструктура готова ✅",
+            body: "Этот экран — WebApp внутри Telegram. Дальше мы подключим список уроков, прогресс и ссылки из бота."
+          },
+          {
+            title: "Что будет дальше",
+            body: "• список уроков + поиск\n• кнопка «Продолжить»\n• отметка прогресса\n• открытие постов канала\n• админ-режим"
+          },
+          {
+            title: "Открыть раздел в боте (позже свяжем)",
+            body: "Сейчас это статическая страница. В следующем шаге бот будет открывать WebApp и передавать стартовый раздел."
+          }
+        ];
+
+        contentEl.innerHTML = "";
+        cards.forEach(c => {
+          const div = document.createElement("div");
+          div.className = "card";
+          div.innerHTML = `
+            <div class="row">
+              <div style="font-weight:700">${c.title}</div>
+            </div>
+            <div class="muted" style="margin-top:8px; white-space:pre-line">${c.body}</div>
+          `;
+          contentEl.appendChild(div);
+        });
+
+        // обновим hash (чтобы можно было открывать /#prep)
+        location.hash = key;
+      }
+
+      function renderNav() {
+        navEl.innerHTML = "";
+        sections.forEach(s => {
+          const btn = document.createElement("button");
+          btn.className = "btn";
+          btn.dataset.key = s.key;
+          btn.innerHTML = `<span>${s.label}</span><span class="tag">раздел</span>`;
+          btn.onclick = () => { setActive(s.key); renderSection(s.key); };
+          navEl.appendChild(btn);
+        });
+      }
+
+      // Telegram WebApp awareness (если открыто внутри Telegram)
+      const tg = window.Telegram?.WebApp;
+      if (tg) {
+        pillEl.textContent = "telegram webapp";
+        tgHintEl.textContent = "Открыто внутри Telegram ✅";
+        try { tg.expand(); } catch {}
+      } else {
+        pillEl.textContent = "browser preview";
+        tgHintEl.textContent = "Открыто в браузере (предпросмотр).";
+      }
+
+      renderNav();
+      const initial = (location.hash || "#prep").replace("#", "");
+      setActive(initial);
+      renderSection(initial);
+    </script>
+  </body>
+</html>
