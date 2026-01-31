@@ -6,30 +6,39 @@ import { db } from "./db.js";
 // Railway обычно задаёт PORT сам
 const PORT = Number(process.env.PORT || process.env.API_PORT || 3000);
 
-// Переменные окружения
-const CHANNEL_USERNAME = (process.env.CHANNEL_USERNAME || "").trim();
-const CHAT_URL = (process.env.CHAT_URL || "").trim();
-const WEBAPP_URL_RAW = (process.env.WEBAPP_URL || "").trim();
+// WebApp URL (GitHub Pages)
+const WEBAPP_URL = (process.env.WEBAPP_URL || "").trim();
+const WEBAPP_ORIGIN = WEBAPP_URL ? new URL(WEBAPP_URL).origin : "";
 
-// Безопасно получаем origin из WEBAPP_URL (чтобы /meta не падал)
-function safeOrigin(url: string): string {
-  if (!url) return "";
-  try {
-    return new URL(url).origin;
-  } catch {
-    return "";
-  }
-}
-
-const WEBAPP_ORIGIN = safeOrigin(WEBAPP_URL_RAW);
-
-// Разрешённые origin'ы
+// Фолбэк: разрешим твой GitHub Pages origin даже если WEBAPP_URL не задан
 const FALLBACK_ORIGINS = ["https://easypi9.github.io"];
+
+// Local dev
 const LOCAL_ORIGINS = ["http://127.0.0.1:8080", "http://localhost:8080"];
 
+// Channel + chat for links
+const CHANNEL_USERNAME = (process.env.CHANNEL_USERNAME || "").trim();
+const CHAT_URL = (process.env.CHAT_URL || "").trim();
+
+// Админ-секрет для POST /admin/*
+const ADMIN_SECRET = (process.env.ADMIN_SECRET || "").trim();
+
 function postUrl(messageId: number) {
-  if (!CHANNEL_USERNAME) return null;
+  if (!CHANNEL_USERNAME) return "";
   return `https://t.me/${CHANNEL_USERNAME}/${messageId}`;
+}
+
+function adminGuard(req: express.Request, res: express.Response): boolean {
+  if (!ADMIN_SECRET) {
+    res.status(500).json({ error: "ADMIN_SECRET is not set on server" });
+    return false;
+  }
+  const got = String(req.headers["x-admin-secret"] || "");
+  if (!got || got !== ADMIN_SECRET) {
+    res.status(401).json({ error: "unauthorized" });
+    return false;
+  }
+  return true;
 }
 
 const app = express();
@@ -39,48 +48,43 @@ app.use(express.json());
 app.use(
   cors({
     origin: (origin, cb) => {
-      // запросы без origin (curl/сервер-сервер) — разрешим
       if (!origin) return cb(null, true);
 
-      const allowed = new Set<string>([
-        ...FALLBACK_ORIGINS,
-        ...LOCAL_ORIGINS,
-        ...(WEBAPP_ORIGIN ? [WEBAPP_ORIGIN] : []),
-      ]);
+      const ok =
+        origin === WEBAPP_ORIGIN ||
+        FALLBACK_ORIGINS.includes(origin) ||
+        LOCAL_ORIGINS.includes(origin);
 
-      const ok = allowed.has(origin);
       return cb(ok ? null : new Error(`CORS blocked for ${origin}`), ok);
     },
   })
 );
 
-// Корень
+// Удобный корень
 app.get("/", (_req, res) => {
-  res.type("text/plain").send("OK. Try /health or /meta");
+  res.send("OK. Try /health or /meta");
 });
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-// meta (НИКОГДА не падает)
+// meta
 app.get("/meta", (_req, res) => {
-  const allowed = [
-    ...(WEBAPP_ORIGIN ? [WEBAPP_ORIGIN] : []),
-    ...FALLBACK_ORIGINS,
-    ...LOCAL_ORIGINS,
-  ];
-
   res.json({
-    channel_username: CHANNEL_USERNAME || null,
-    chat_url: CHAT_URL || null,
-    webapp_url: WEBAPP_URL_RAW || null,
-    webapp_origin: WEBAPP_ORIGIN || null,
-    allowed_origins: allowed,
+    channel_username: CHANNEL_USERNAME,
+    chat_url: CHAT_URL,
+    webapp_url: WEBAPP_URL,
+    webapp_origin: WEBAPP_ORIGIN,
+    allowed_origins: [
+      ...(WEBAPP_ORIGIN ? [WEBAPP_ORIGIN] : []),
+      ...FALLBACK_ORIGINS,
+      ...LOCAL_ORIGINS,
+    ],
   });
 });
 
-// lessons: GET /lessons?section=prep|steam
+// lessons
 app.get("/lessons", (req, res) => {
   const section = String(req.query.section || "").trim();
   if (section !== "prep" && section !== "steam") {
@@ -95,10 +99,7 @@ app.get("/lessons", (req, res) => {
 
   res.json({
     section,
-    items: rows.map((r) => ({
-      ...r,
-      post_url: postUrl(r.message_id),
-    })),
+    items: rows.map((r) => ({ ...r, post_url: postUrl(r.message_id) })),
   });
 });
 
@@ -117,32 +118,23 @@ app.get("/news", (_req, res) => {
     .all() as Array<{ message_id: number; created_at: string }>;
 
   res.json({
-    items: rows.map((r) => ({
-      ...r,
-      post_url: postUrl(r.message_id),
-    })),
+    items: rows.map((r) => ({ ...r, post_url: postUrl(r.message_id) })),
   });
 });
 
-// progress: GET /progress?user_id=123
+// progress
 app.get("/progress", (req, res) => {
   const userId = Number(req.query.user_id);
   if (!userId) return res.status(400).json({ error: "user_id required" });
 
   const rows = db
     .prepare("SELECT section, ord, updated_at FROM progress WHERE user_id=?")
-    .all(userId) as Array<{
-    section: "prep" | "steam";
-    ord: number;
-    updated_at: string;
-  }>;
+    .all(userId) as Array<{ section: "prep" | "steam"; ord: number; updated_at: string }>;
 
   const items = rows.map((p) => {
     const lesson = db
       .prepare("SELECT title, message_id FROM lessons WHERE section=? AND ord=?")
-      .get(p.section, p.ord) as
-      | { title: string; message_id: number }
-      | undefined;
+      .get(p.section, p.ord) as { title: string; message_id: number } | undefined;
 
     return {
       ...p,
@@ -155,8 +147,68 @@ app.get("/progress", (req, res) => {
   res.json({ user_id: userId, items });
 });
 
+/**
+ * -------------------------
+ * ADMIN ENDPOINTS (seed DB on Railway)
+ * -------------------------
+ */
+
+// add/update lesson
+// POST /admin/lesson
+// body: { section: "prep"|"steam", ord: number, title: string, message_id: number }
+app.post("/admin/lesson", (req, res) => {
+  if (!adminGuard(req, res)) return;
+
+  const section = String(req.body?.section || "").trim();
+  const ord = Number(req.body?.ord);
+  const title = String(req.body?.title || "").trim();
+  const message_id = Number(req.body?.message_id);
+
+  if ((section !== "prep" && section !== "steam") || !ord || !title || !message_id) {
+    return res.status(400).json({
+      error: "body must be { section: prep|steam, ord: number, title: string, message_id: number }",
+    });
+  }
+
+  db.prepare(
+    "INSERT OR REPLACE INTO lessons(section, ord, title, message_id) VALUES (?,?,?,?)"
+  ).run(section, ord, title, message_id);
+
+  res.json({ ok: true });
+});
+
+// add link
+// POST /admin/link
+// body: { title: string, url: string, ord?: number }
+app.post("/admin/link", (req, res) => {
+  if (!adminGuard(req, res)) return;
+
+  const title = String(req.body?.title || "").trim();
+  const url = String(req.body?.url || "").trim();
+  const ord = Number(req.body?.ord || 0);
+
+  if (!title || !url) {
+    return res.status(400).json({ error: "body must be { title: string, url: string, ord?: number }" });
+  }
+
+  db.prepare("INSERT INTO links(title, url, ord) VALUES (?,?,?)").run(title, url, ord);
+  res.json({ ok: true });
+});
+
+// add news by message_id
+// POST /admin/news
+// body: { message_id: number }
+app.post("/admin/news", (req, res) => {
+  if (!adminGuard(req, res)) return;
+
+  const message_id = Number(req.body?.message_id);
+  if (!message_id) return res.status(400).json({ error: "body must be { message_id: number }" });
+
+  db.prepare("INSERT OR IGNORE INTO news(message_id) VALUES (?)").run(message_id);
+  res.json({ ok: true });
+});
+
 app.listen(PORT, () => {
   console.log(`API started on port ${PORT}`);
-  console.log(`WEBAPP_URL=${WEBAPP_URL_RAW || "(empty)"}`);
-  console.log(`WEBAPP_ORIGIN=${WEBAPP_ORIGIN || "(empty)"}`);
+  if (WEBAPP_ORIGIN) console.log(`CORS allowed: ${WEBAPP_ORIGIN}`);
 });
