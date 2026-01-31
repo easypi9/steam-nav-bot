@@ -10,19 +10,18 @@ const PORT = Number(process.env.PORT || process.env.API_PORT || 3000);
 
 /**
  * WebApp (GitHub Pages)
- * пример: https://easypi9.github.io/steam-nav-bot
  */
 const WEBAPP_URL = (process.env.WEBAPP_URL || "").trim();
 const WEBAPP_ORIGIN = WEBAPP_URL ? new URL(WEBAPP_URL).origin : "";
 
 /**
- * Разрешённые origins
+ * Allowed origins
  */
 const FALLBACK_ORIGINS = ["https://easypi9.github.io"];
 const LOCAL_ORIGINS = ["http://127.0.0.1:8080", "http://localhost:8080"];
 
 /**
- * Данные канала
+ * Channel data
  */
 const CHANNEL_USERNAME = (process.env.CHANNEL_USERNAME || "").trim();
 const CHAT_URL = (process.env.CHAT_URL || "").trim();
@@ -56,38 +55,38 @@ app.use(
 );
 
 /**
- * ROOT
+ * Root
  */
 app.get("/", (_req, res) => {
-  res.send("OK. Try /health or /meta");
+  res.status(200).send("OK. Try /health or /meta");
 });
 
 /**
- * HEALTH
+ * Healthcheck
  */
 app.get("/health", (_req, res) => {
-  res.json({ ok: true });
+  res.status(200).json({ ok: true });
 });
 
 /**
- * META
+ * Meta
  */
 app.get("/meta", (_req, res) => {
-  res.json({
+  res.status(200).json({
     channel_username: CHANNEL_USERNAME,
     chat_url: CHAT_URL,
     webapp_origin: WEBAPP_ORIGIN,
     allowed_origins: [
-      ...(WEBAPP_ORIGIN ? [WEBAPP_ORIGIN] : []),
+      ...(WEBAPP_ORIGI‍N ? [WEBAPP_ORIGIN] : []),
       ...FALLBACK_ORIGINS,
       ...LOCAL_ORIGINS,
     ],
+    port: PORT,
   });
 });
 
 /**
- * LESSONS
- * /lessons?section=prep | steam
+ * Lessons
  */
 app.get("/lessons", (req, res) => {
   const section = String(req.query.section || "").trim();
@@ -103,26 +102,22 @@ app.get("/lessons", (req, res) => {
 
   res.json({
     section,
-    items: rows.map((r) => ({
-      ...r,
-      post_url: postUrl(r.message_id),
-    })),
+    items: rows.map((r) => ({ ...r, post_url: postUrl(r.message_id) })),
   });
 });
 
 /**
- * LINKS
+ * Links
  */
 app.get("/links", (_req, res) => {
   const rows = db
     .prepare("SELECT title, url, ord FROM links ORDER BY ord ASC, id ASC")
     .all();
-
   res.json({ items: rows });
 });
 
 /**
- * NEWS
+ * News
  */
 app.get("/news", (_req, res) => {
   const rows = db
@@ -130,16 +125,12 @@ app.get("/news", (_req, res) => {
     .all() as Array<{ message_id: number; created_at: string }>;
 
   res.json({
-    items: rows.map((r) => ({
-      ...r,
-      post_url: postUrl(r.message_id),
-    })),
+    items: rows.map((r) => ({ ...r, post_url: postUrl(r.message_id) })),
   });
 });
 
 /**
- * PROGRESS
- * /progress?user_id=123
+ * Progress
  */
 app.get("/progress", (req, res) => {
   const userId = Number(req.query.user_id);
@@ -147,28 +138,18 @@ app.get("/progress", (req, res) => {
 
   const rows = db
     .prepare("SELECT section, ord, updated_at FROM progress WHERE user_id=?")
-    .all(userId) as Array<{
-    section: "prep" | "steam";
-    ord: number;
-    updated_at: string;
-  }>;
+    .all(userId) as Array<{ section: "prep" | "steam"; ord: number; updated_at: string }>;
 
   const items = rows.map((p) => {
     const lesson = db
-      .prepare(
-        "SELECT title, message_id FROM lessons WHERE section=? AND ord=?"
-      )
-      .get(p.section, p.ord) as
-      | { title: string; message_id: number }
-      | undefined;
+      .prepare("SELECT title, message_id FROM lessons WHERE section=? AND ord=?")
+      .get(p.section, p.ord) as { title: string; message_id: number } | undefined;
 
     return {
       ...p,
       title: lesson?.title ?? null,
       message_id: lesson?.message_id ?? null,
-      post_url: lesson?.message_id
-        ? postUrl(lesson.message_id)
-        : null,
+      post_url: lesson?.message_id ? postUrl(lesson.message_id) : null,
     };
   });
 
@@ -176,8 +157,19 @@ app.get("/progress", (req, res) => {
 });
 
 /**
- * LISTEN — ВАЖНО ДЛЯ RAILWAY
+ * IMPORTANT for Railway:
+ * - bind to 0.0.0.0
+ * - log address
  */
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`API started on port ${PORT}`);
+const server = app.listen(PORT, "0.0.0.0", () => {
+  const addr = server.address();
+  console.log("API started:", addr);
+  console.log(`PORT env: ${process.env.PORT}`);
+  console.log(`WEBAPP_ORIGIN: ${WEBAPP_ORIGIN || "(empty)"}`);
 });
+
+/**
+ * Better crash visibility
+ */
+process.on("uncaughtException", (e) => console.error("uncaughtException", e));
+process.on("unhandledRejection", (e) => console.error("unhandledRejection", e));
