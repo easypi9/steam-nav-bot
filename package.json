@@ -6,22 +6,23 @@
   "scripts": {
     "dev": "tsx index.ts",
     "api": "tsx api.ts",
-    "bot": "tsx index.ts",
-    "start": "tsx api.ts"
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "telegraf": "^4.16.3",
-    "tsx": "^4.20.0"
+    "telegraf": "^4.16.3"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.1.0",
     "http-server": "^14.1.1",
+    "tsx": "^4.20.0",
     "typescript": "^5.9.3"
   }
 }

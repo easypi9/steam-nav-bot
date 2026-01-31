@@ -1,126 +1,83 @@
 import "dotenv/config";
+import "./api.js";
+
 import { Telegraf, Markup } from "telegraf";
 
 const BOT_TOKEN = (process.env.BOT_TOKEN || "").trim();
-if (!BOT_TOKEN) {
-  throw new Error("BOT_TOKEN is required in .env");
+if (!BOT_TOKEN) throw new Error("BOT_TOKEN is required");
+
+const WEBAPP_URL = (process.env.WEBAPP_URL || "").trim();
+const CHANNEL_USERNAME = (process.env.CHANNEL_USERNAME || "").trim();
+const CHAT_URL = (process.env.CHAT_URL || "").trim();
+const ADMIN_IDS = (process.env.ADMIN_IDS || "")
+  .split(",")
+  .map((s) => Number(s.trim()))
+  .filter(Boolean);
+
+function isAdmin(userId?: number) {
+  return !!userId && ADMIN_IDS.includes(userId);
 }
 
-const WEBAPP_URL_RAW = (process.env.WEBAPP_URL || "").trim(); // например: https://easypi9.github.io/steam-nav-bot/
-const CHANNEL_USERNAME = (process.env.CHANNEL_USERNAME || "").trim(); // например: steamself
-const CHAT_URL = (process.env.CHAT_URL || "").trim(); // например: https://t.me/chat_steamself
-
-function normalizeWebappUrl(u: string) {
-  if (!u) return "";
-  // GitHub Pages обычно требует trailing slash
-  return u.endsWith("/") ? u : `${u}/`;
-}
-
-const WEBAPP_URL = normalizeWebappUrl(WEBAPP_URL_RAW);
+const webappMain = WEBAPP_URL || "https://easypi9.github.io/steam-nav-bot/";
 
 function webappSectionUrl(section: "prep" | "steam" | "news" | "links") {
   if (!WEBAPP_URL) return "";
-  // В твоём webapp используется location.hash (как раньше), поэтому просто добавляем #section
-  return `${WEBAPP_URL}#${section}`;
+  const base = WEBAPP_URL.endsWith("/") ? WEBAPP_URL : WEBAPP_URL + "/";
+  return `${base}#${section}`;
 }
 
 const bot = new Telegraf(BOT_TOKEN);
 
-// --- UI helpers ---
-function startMenuKeyboard() {
-  const webappMain = WEBAPP_URL || "https://easypi9.github.io/steam-nav-bot/";
-
-  return Markup.inlineKeyboard(
-    [
-      // Главная кнопка WebApp
-      [Markup.button.webApp("📱 Открыть каталог", webappMain)],
-
-      // Быстрый старт по разделам
-      [
-        Markup.button.webApp("🧩 Подготовительный курс", webappSectionUrl("prep") || webappMain),
-        Markup.button.webApp("🚀 Курс STEAM", webappSectionUrl("steam") || webappMain),
-      ],
-      [
-        Markup.button.webApp("🗞 Новости", webappSectionUrl("news") || webappMain),
-        Markup.button.webApp("🔗 Полезные ссылки", webappSectionUrl("links") || webappMain),
-      ],
-
-      // Внешние ссылки
-      ...(CHAT_URL
-        ? [[Markup.button.url("💬 Чат-обсуждение", CHAT_URL)]]
-        : []),
-
-      ...(CHANNEL_USERNAME
-        ? [[Markup.button.url("📣 Канал", `https://t.me/${CHANNEL_USERNAME}`)]]
-        : []),
-
-      // Админ (пока заглушка)
-      [Markup.button.callback("🛠 Админ-панель", "admin_stub")],
-    ],
-    { columns: 2 }
-  );
-}
-
-// --- Commands ---
 bot.start(async (ctx) => {
-  const text =
-    "Привет! Выбери раздел:\n\n" +
-    "📱 «Открыть каталог» — откроет WebApp внутри Telegram.\n" +
-    "🧩/🚀/🗞/🔗 — откроют WebApp сразу на нужном разделе.";
+  const userId = ctx.from?.id;
 
-  await ctx.reply(text, startMenuKeyboard());
-});
+  const buttons: any[] = [];
 
-bot.command("menu", async (ctx) => {
-  await ctx.reply("Меню:", startMenuKeyboard());
-});
-
-// --- Callbacks ---
-bot.action("admin_stub", async (ctx) => {
-  try {
-    await ctx.answerCbQuery("Админ-режим подключим позже 🙂", { show_alert: false });
-  } catch {}
-  await ctx.reply(
-    "🛠 Админ-панель пока в разработке.\n" +
-      "Дальше сделаем: добавление уроков/новостей/ссылок и выгрузку в SQLite + API."
+  buttons.push(Markup.button.webApp("📱 Открыть каталог", webappMain));
+  buttons.push(
+    Markup.button.webApp(
+      "🧩 Подготовительный курс",
+      webappSectionUrl("prep") || webappMain
+    )
   );
+  buttons.push(
+    Markup.button.webApp(
+      "🚀 Курс STEAM",
+      webappSectionUrl("steam") || webappMain
+    )
+  );
+  buttons.push(
+    Markup.button.webApp("🗞 Новости", webappSectionUrl("news") || webappMain)
+  );
+  buttons.push(
+    Markup.button.webApp(
+      "🔗 Полезные ссылки",
+      webappSectionUrl("links") || webappMain
+    )
+  );
+
+  if (CHAT_URL) buttons.push(Markup.button.url("💬 Чат-обсуждение", CHAT_URL));
+  if (CHANNEL_USERNAME)
+    buttons.push(
+      Markup.button.url("📣 Канал", `https://t.me/${CHANNEL_USERNAME}`)
+    );
+
+  if (isAdmin(userId))
+    buttons.push(Markup.button.callback("🛠 Админ-панель", "admin_stub"));
+
+  const kb = Markup.inlineKeyboard(buttons, { columns: 2 });
+
+  await ctx.reply("Привет! Выбери раздел:", kb);
 });
 
-// --- Basic health / debug ---
-bot.command("ping", async (ctx) => ctx.reply("pong ✅"));
-
-bot.catch((err) => {
-  console.error("BOT ERROR:", err);
+bot.action("admin_stub", async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply("Админ-панель: скоро добавим функции ✅");
 });
 
-// --- Launch ---
-async function launch() {
-  // Если хочешь вебхук на Railway: задай WEBHOOK_DOMAIN (https://....up.railway.app) и WEBHOOK_PATH (например /telegraf)
-  const WEBHOOK_DOMAIN = (process.env.WEBHOOK_DOMAIN || "").trim(); // например: https://steam-nav-bot-production.up.railway.app
-  const WEBHOOK_PATH = (process.env.WEBHOOK_PATH || "/telegraf").trim();
-  const PORT = Number(process.env.PORT || 3000);
+bot.catch((err) => console.error("BOT ERROR:", err));
 
-  if (WEBHOOK_DOMAIN) {
-    // Вебхук-режим (подходит для Railway)
-    await bot.launch({
-      webhook: {
-        domain: WEBHOOK_DOMAIN,
-        hookPath: WEBHOOK_PATH,
-        port: PORT,
-      },
-    });
-    console.log(`Bot started (webhook): ${WEBHOOK_DOMAIN}${WEBHOOK_PATH}`);
-  } else {
-    // Поллинг (локально)
-    await bot.launch();
-    console.log("Bot started (polling)");
-  }
+bot.launch().then(() => console.log("Bot launched ✅"));
 
-  process.once("SIGINT", () => bot.stop("SIGINT"));
-  process.once("SIGTERM", () => bot.stop("SIGTERM"));
-}
-
-launch().catch((e) => {
-  console.error("Failed to launch bot:", e);
-  process.exit(1);
-});
+process.once("SIGINT", () => bot.stop("SIGINT"));
+process.once("SIGTERM", () => bot.stop("SIGTERM"));
