@@ -3,57 +3,75 @@ import express from "express";
 import cors from "cors";
 import { db } from "./db.js";
 
-// Railway обычно задаёт PORT сам
+/**
+ * Railway всегда прокидывает PORT
+ */
 const PORT = Number(process.env.PORT || process.env.API_PORT || 3000);
 
-// WebApp URL (GitHub Pages)
+/**
+ * WebApp (GitHub Pages)
+ * пример: https://easypi9.github.io/steam-nav-bot
+ */
 const WEBAPP_URL = (process.env.WEBAPP_URL || "").trim();
 const WEBAPP_ORIGIN = WEBAPP_URL ? new URL(WEBAPP_URL).origin : "";
 
-// Фолбэк: разрешим твой GitHub Pages origin даже если WEBAPP_URL не задан
+/**
+ * Разрешённые origins
+ */
 const FALLBACK_ORIGINS = ["https://easypi9.github.io"];
-
-// Local dev
 const LOCAL_ORIGINS = ["http://127.0.0.1:8080", "http://localhost:8080"];
 
-// Channel + chat for links
+/**
+ * Данные канала
+ */
 const CHANNEL_USERNAME = (process.env.CHANNEL_USERNAME || "").trim();
 const CHAT_URL = (process.env.CHAT_URL || "").trim();
 
 function postUrl(messageId: number) {
-  if (!CHANNEL_USERNAME) return "";
+  if (!CHANNEL_USERNAME) return null;
   return `https://t.me/${CHANNEL_USERNAME}/${messageId}`;
 }
 
 const app = express();
 app.use(express.json());
 
-// CORS
+/**
+ * CORS
+ */
 app.use(
   cors({
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
 
-      const ok =
-        origin === WEBAPP_ORIGIN ||
-        FALLBACK_ORIGINS.includes(origin) ||
-        LOCAL_ORIGINS.includes(origin);
+      const allowed = [
+        ...(WEBAPP_ORIGIN ? [WEBAPP_ORIGIN] : []),
+        ...FALLBACK_ORIGINS,
+        ...LOCAL_ORIGINS,
+      ];
 
-      return cb(ok ? null : new Error(`CORS blocked for ${origin}`), ok);
+      const ok = allowed.includes(origin);
+      return cb(ok ? null : new Error(`CORS blocked: ${origin}`), ok);
     },
   })
 );
 
-// Удобный корень
+/**
+ * ROOT
+ */
 app.get("/", (_req, res) => {
   res.send("OK. Try /health or /meta");
 });
 
+/**
+ * HEALTH
+ */
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-// meta
+/**
+ * META
+ */
 app.get("/meta", (_req, res) => {
   res.json({
     channel_username: CHANNEL_USERNAME,
@@ -67,7 +85,10 @@ app.get("/meta", (_req, res) => {
   });
 });
 
-// lessons
+/**
+ * LESSONS
+ * /lessons?section=prep | steam
+ */
 app.get("/lessons", (req, res) => {
   const section = String(req.query.section || "").trim();
   if (section !== "prep" && section !== "steam") {
@@ -82,55 +103,81 @@ app.get("/lessons", (req, res) => {
 
   res.json({
     section,
-    items: rows.map((r) => ({ ...r, post_url: postUrl(r.message_id) })),
+    items: rows.map((r) => ({
+      ...r,
+      post_url: postUrl(r.message_id),
+    })),
   });
 });
 
-// links
+/**
+ * LINKS
+ */
 app.get("/links", (_req, res) => {
   const rows = db
     .prepare("SELECT title, url, ord FROM links ORDER BY ord ASC, id ASC")
     .all();
+
   res.json({ items: rows });
 });
 
-// news
+/**
+ * NEWS
+ */
 app.get("/news", (_req, res) => {
   const rows = db
     .prepare("SELECT message_id, created_at FROM news ORDER BY id DESC LIMIT 200")
     .all() as Array<{ message_id: number; created_at: string }>;
 
   res.json({
-    items: rows.map((r) => ({ ...r, post_url: postUrl(r.message_id) })),
+    items: rows.map((r) => ({
+      ...r,
+      post_url: postUrl(r.message_id),
+    })),
   });
 });
 
-// progress
+/**
+ * PROGRESS
+ * /progress?user_id=123
+ */
 app.get("/progress", (req, res) => {
   const userId = Number(req.query.user_id);
   if (!userId) return res.status(400).json({ error: "user_id required" });
 
   const rows = db
     .prepare("SELECT section, ord, updated_at FROM progress WHERE user_id=?")
-    .all(userId) as Array<{ section: "prep" | "steam"; ord: number; updated_at: string }>;
+    .all(userId) as Array<{
+    section: "prep" | "steam";
+    ord: number;
+    updated_at: string;
+  }>;
 
   const items = rows.map((p) => {
     const lesson = db
-      .prepare("SELECT title, message_id FROM lessons WHERE section=? AND ord=?")
-      .get(p.section, p.ord) as { title: string; message_id: number } | undefined;
+      .prepare(
+        "SELECT title, message_id FROM lessons WHERE section=? AND ord=?"
+      )
+      .get(p.section, p.ord) as
+      | { title: string; message_id: number }
+      | undefined;
 
     return {
       ...p,
-      title: lesson?.title || null,
-      message_id: lesson?.message_id || null,
-      post_url: lesson?.message_id ? postUrl(lesson.message_id) : null,
+      title: lesson?.title ?? null,
+      message_id: lesson?.message_id ?? null,
+      post_url: lesson?.message_id
+        ? postUrl(lesson.message_id)
+        : null,
     };
   });
 
   res.json({ user_id: userId, items });
 });
 
-app.listen(PORT, () => {
+/**
+ * LISTEN — ВАЖНО ДЛЯ RAILWAY
+ */
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`API started on port ${PORT}`);
-  if (WEBAPP_ORIGIN) console.log(`CORS allowed: ${WEBAPP_ORIGIN}`);
 });
