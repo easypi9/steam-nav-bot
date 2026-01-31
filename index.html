@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>STEAM Навигация</title>
     <style>
-      :root { --bg:#0b1220; --panel:#111a2e; --card:#0f1930; --text:#e8eefc; --muted:#a9b7db; --accent:#6aa7ff; --ok:#3ddc97; --bad:#ff6a6a; }
+      :root { --bg:#0b1220; --panel:#111a2e; --card:#0f1930; --text:#e8eefc; --muted:#a9b7db; --accent:#6aa7ff; --bad:#ff6a6a; --ok:#58d18c; }
       * { box-sizing: border-box; }
       body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
       .app { display:flex; min-height:100vh; }
       .sidebar { width: 280px; background:var(--panel); padding:16px; border-right: 1px solid rgba(255,255,255,.08); }
-      .brand { font-weight:700; letter-spacing:.2px; margin-bottom:10px; }
+      .brand { font-weight:700; letter-spacing:.2px; margin-bottom:14px; }
       .sub { color:var(--muted); font-size:13px; margin-bottom:14px; line-height:1.35; }
       .nav { display:flex; flex-direction:column; gap:8px; }
       .btn {
@@ -25,10 +25,12 @@
       .main { flex:1; padding:18px; }
       .top { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px; }
       .title { font-size:18px; font-weight:700; }
-      .pill { padding:8px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12); color:var(--muted); font-size:12px; display:flex; gap:8px; align-items:center; }
-      .dot { width:8px; height:8px; border-radius:50%; background: rgba(255,255,255,.22); }
-      .dot.ok { background: var(--ok); }
-      .dot.bad { background: var(--bad); }
+
+      .badges { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+      .pill { padding:8px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12); color:var(--muted); font-size:12px; }
+      .pill.ok { border-color: rgba(88,209,140,.45); color: var(--ok); }
+      .pill.bad { border-color: rgba(255,106,106,.45); color: var(--bad); }
+
       .card {
         background: var(--card);
         border: 1px solid rgba(255,255,255,.10);
@@ -42,41 +44,15 @@
         display:inline-flex; gap:8px; align-items:center;
         text-decoration:none; color:var(--accent); font-weight:600;
       }
+      .small { font-size:12px; color:var(--muted); margin-top:8px; }
+
       .list { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
-      .item {
-        padding:12px;
-        border-radius:14px;
-        border: 1px solid rgba(255,255,255,.10);
-        background: rgba(255,255,255,.03);
-        display:flex; justify-content:space-between; gap:12px; align-items:center;
-      }
-      .item .left { display:flex; flex-direction:column; gap:4px; }
-      .item .t { font-weight:700; }
-      .item .s { font-size:12px; color:var(--muted); }
-      .small { font-size:12px; color:var(--muted); margin-top:10px; line-height:1.45; word-break: break-word; }
-      .inputRow { display:flex; gap:10px; align-items:center; margin-top:10px; }
-      .inp {
-        flex:1;
-        background: rgba(255,255,255,.04);
-        border: 1px solid rgba(255,255,255,.12);
-        color: var(--text);
-        border-radius: 12px;
-        padding: 10px 12px;
-        outline: none;
-      }
-      .saveBtn {
-        padding: 10px 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,.12);
-        background: rgba(255,255,255,.06);
-        color: var(--text);
-        cursor:pointer;
-        white-space: nowrap;
-      }
-      .saveBtn:hover { border-color: rgba(106,167,255,.45); }
-      @media (max-width: 820px) {
-        .sidebar { width: 220px; }
-      }
+      .item { padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03); }
+      .itemTitle { font-weight:700; margin-bottom:6px; }
+      .itemMeta { color:var(--muted); font-size:12px; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+      @media (max-width: 820px) { .sidebar { width: 220px; } }
       @media (max-width: 650px) {
         .app { flex-direction: column; }
         .sidebar { width:100%; border-right:none; border-bottom: 1px solid rgba(255,255,255,.08); }
@@ -87,26 +63,22 @@
     <div class="app">
       <aside class="sidebar">
         <div class="brand">📚 STEAM Навигация</div>
-        <div class="sub">Теперь WebApp реально пингует API и показывает статус.</div>
+        <div class="sub">Меню + подключение к API (Railway). Если API недоступен — увидишь ошибку сверху.</div>
 
         <nav class="nav" id="nav"></nav>
 
         <div class="small" id="tgHint"></div>
-
-        <div class="small" style="margin-top:10px;">
-          <b>API URL</b> (можно переопределить через <code>?api=...</code>):
-          <div class="inputRow">
-            <input class="inp" id="apiInput" placeholder="https://..." />
-            <button class="saveBtn" id="apiSave">Сохранить</button>
-          </div>
-          <div class="small" id="apiSavedHint"></div>
-        </div>
+        <div class="small mono" id="apiHint" style="margin-top:10px;"></div>
       </aside>
 
       <main class="main">
         <div class="top">
           <div class="title" id="screenTitle">Загрузка…</div>
-          <div class="pill" id="pill"><span class="dot" id="dot"></span><span id="pillText">offline</span></div>
+
+          <div class="badges">
+            <div class="pill" id="pillEnv">...</div>
+            <div class="pill" id="pillApi">API: ...</div>
+          </div>
         </div>
 
         <div class="cards" id="content"></div>
@@ -115,117 +87,102 @@
 
     <script>
       // ====== CONFIG ======
+      // 1) Можно переопределить API через query: ?api=https://...
+      // 2) Иначе берём дефолт (твоя Railway ссылка)
       const DEFAULT_API_BASE = "https://steam-nav-bot-production.up.railway.app";
 
-      // Allow override via ?api=https://...
-      const urlParams = new URLSearchParams(location.search);
-      const apiFromQuery = (urlParams.get("api") || "").trim();
+      function getQueryParam(name) {
+        const u = new URL(location.href);
+        return u.searchParams.get(name);
+      }
 
-      // Allow override via localStorage
-      const apiFromStorage = (localStorage.getItem("API_BASE") || "").trim();
+      const apiFromQuery = (getQueryParam("api") || "").trim();
+      const API_BASE = apiFromQuery || DEFAULT_API_BASE;
 
-      // Final API base
-      let API_BASE = apiFromQuery || apiFromStorage || DEFAULT_API_BASE;
-      API_BASE = API_BASE.replace(/\/+$/, ""); // trim trailing /
-
+      // ====== UI DATA ======
       const sections = [
-        { key: "prep", label: "🧩 Подготовительный курс", desc: "Уроки с нуля: подготовка к STEAM.", api: () => `${API_BASE}/lessons?section=prep` },
-        { key: "steam", label: "🚀 Курс STEAM", desc: "Основной курс, модули и практика.", api: () => `${API_BASE}/lessons?section=steam` },
-        { key: "news", label: "🗞 Новости", desc: "Анонсы, обновления, события.", api: () => `${API_BASE}/news` },
-        { key: "links", label: "🔗 Полезные ссылки", desc: "Ресурсы, сервисы, материалы.", api: () => `${API_BASE}/links` },
+        { key: "prep",  label: "🧩 Подготовительный курс", desc: "Уроки с нуля: подготовка к STEAM." },
+        { key: "steam", label: "🚀 Курс STEAM",           desc: "Основной курс, модули и практика." },
+        { key: "news",  label: "🗞 Новости",              desc: "Анонсы, обновления, события." },
+        { key: "links", label: "🔗 Полезные ссылки",      desc: "Ресурсы, сервисы, материалы." },
       ];
 
       // ====== DOM ======
       const navEl = document.getElementById("nav");
       const contentEl = document.getElementById("content");
       const titleEl = document.getElementById("screenTitle");
-      const pillTextEl = document.getElementById("pillText");
-      const dotEl = document.getElementById("dot");
+      const pillEnvEl = document.getElementById("pillEnv");
+      const pillApiEl = document.getElementById("pillApi");
       const tgHintEl = document.getElementById("tgHint");
+      const apiHintEl = document.getElementById("apiHint");
 
-      const apiInputEl = document.getElementById("apiInput");
-      const apiSaveEl = document.getElementById("apiSave");
-      const apiSavedHintEl = document.getElementById("apiSavedHint");
-
-      apiInputEl.value = API_BASE;
-      apiSavedHintEl.textContent = apiFromQuery
-        ? "Источник: параметр ?api=..."
-        : (apiFromStorage ? "Источник: localStorage" : "Источник: значение по умолчанию");
-
-      apiSaveEl.onclick = () => {
-        const v = (apiInputEl.value || "").trim().replace(/\/+$/, "");
-        if (!v) return;
-        localStorage.setItem("API_BASE", v);
-        location.href = location.pathname + location.hash; // reload without query
-      };
-
-      // ====== Helpers ======
-      function setPill(status, text) {
-        pillTextEl.textContent = text;
-        dotEl.classList.remove("ok", "bad");
-        if (status === "ok") dotEl.classList.add("ok");
-        if (status === "bad") dotEl.classList.add("bad");
-      }
-
+      // ====== HELPERS ======
       function setActive(key) {
         document.querySelectorAll(".btn").forEach(b => b.classList.toggle("active", b.dataset.key === key));
       }
 
-      function elCard(title, body, extraHtml = "") {
+      function card(title, bodyHtml) {
         const div = document.createElement("div");
         div.className = "card";
         div.innerHTML = `
           <div class="row">
             <div style="font-weight:700">${title}</div>
           </div>
-          <div class="muted" style="margin-top:8px; white-space:pre-line">${body}</div>
-          ${extraHtml || ""}
+          <div class="muted" style="margin-top:8px;">${bodyHtml}</div>
         `;
         return div;
       }
 
-      async function safeJson(url) {
-        const r = await fetch(url, { method: "GET" });
-        const ct = (r.headers.get("content-type") || "");
-        const text = await r.text();
-        let data = null;
-        if (ct.includes("application/json")) {
-          try { data = JSON.parse(text); } catch {}
-        }
-        if (!r.ok) {
-          const err = new Error(`HTTP ${r.status} for ${url}`);
-          err.status = r.status;
-          err.body = text;
-          throw err;
-        }
-        return data ?? text;
+      function escapeHtml(s) {
+        return String(s)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
       }
 
-      // ====== Telegram awareness ======
+      async function apiGet(path) {
+        const url = API_BASE.replace(/\/$/, "") + path;
+        const r = await fetch(url, { method: "GET" });
+        if (!r.ok) {
+          const txt = await r.text().catch(() => "");
+          throw new Error(`HTTP ${r.status} ${r.statusText} — ${txt.slice(0, 200)}`);
+        }
+        return r.json();
+      }
+
+      // ====== TELEGRAM AWARENESS ======
       const tg = window.Telegram?.WebApp;
       if (tg) {
+        pillEnvEl.textContent = "telegram webapp";
         tgHintEl.textContent = "Открыто внутри Telegram ✅";
         try { tg.expand(); } catch {}
       } else {
+        pillEnvEl.textContent = "browser preview";
         tgHintEl.textContent = "Открыто в браузере (предпросмотр).";
       }
 
-      // ====== API boot check ======
-      async function pingApi() {
-        setPill("bad", "API: checking…");
+      apiHintEl.textContent = `API_BASE: ${API_BASE}`;
+
+      // ====== API STATUS (meta) ======
+      async function loadApiStatus() {
+        pillApiEl.textContent = "API: checking…";
+        pillApiEl.classList.remove("ok", "bad");
+
         try {
-          const h = await safeJson(`${API_BASE}/health`);
-          if (h && h.ok) {
-            setPill("ok", "API: OK");
-          } else {
-            setPill("bad", "API: bad response");
-          }
+          const meta = await apiGet("/meta");
+          pillApiEl.textContent = "API: OK";
+          pillApiEl.classList.add("ok");
+          return meta;
         } catch (e) {
-          setPill("bad", "API: ERROR");
+          pillApiEl.textContent = "API: ERROR";
+          pillApiEl.classList.add("bad");
+          return { error: String(e?.message || e) };
         }
       }
 
-      // ====== Render ======
+      // ====== RENDER ======
       function renderNav() {
         navEl.innerHTML = "";
         sections.forEach(s => {
@@ -242,106 +199,126 @@
         const s = sections.find(x => x.key === key) || sections[0];
         titleEl.textContent = s.label;
         contentEl.innerHTML = "";
+        location.hash = key;
 
-        // Always show API base + meta quick view
-        contentEl.appendChild(elCard(
-          "Связь с API",
-          `API_BASE: ${API_BASE}\nРаздел: ${s.key}`
-        ));
+        // Первая карточка всегда показывает состояние API
+        const meta = await loadApiStatus();
 
-        // Try show /meta (nice for infra debug)
-        try {
-          const meta = await safeJson(`${API_BASE}/meta`);
-          contentEl.appendChild(elCard(
-            "META (из API)",
-            `channel_username: ${meta.channel_username || ""}\nchat_url: ${meta.chat_url || ""}\nwebapp_origin: ${meta.webapp_origin || ""}`
-          ));
-        } catch (e) {
-          contentEl.appendChild(elCard(
-            "META (из API)",
-            `Не удалось получить /meta.\nПроверь API и CORS.\n\n${String(e.message || e)}`
-          ));
+        if (meta && meta.error) {
+          contentEl.appendChild(card("Связь с API ❌", `
+            <div class="mono">${escapeHtml(meta.error)}</div>
+            <div style="margin-top:10px" class="muted">
+              Проверь:<br/>
+              • Railway URL доступен: <span class="mono">${escapeHtml(API_BASE)}</span><br/>
+              • CORS: Origin должен быть <span class="mono">https://easypi9.github.io</span><br/>
+              • /health и /meta должны отдавать 200
+            </div>
+          `));
+          contentEl.appendChild(card("Инфраструктура готова ✅", `
+            API сейчас недоступен, но WebApp уже умеет подключаться.
+          `));
+          return;
         }
 
-        // Load section data
+        contentEl.appendChild(card("Связь с API ✅", `
+          <div class="muted">META из API:</div>
+          <div class="mono" style="white-space:pre-wrap; margin-top:8px;">${escapeHtml(JSON.stringify(meta, null, 2))}</div>
+        `));
+
+        // Далее — контент по разделам
         try {
-          const data = await safeJson(s.api());
-          const items = (data && data.items) ? data.items : [];
-          const desc = s.desc;
+          if (key === "prep" || key === "steam") {
+            const data = await apiGet(`/lessons?section=${encodeURIComponent(key)}`);
+            const items = Array.isArray(data.items) ? data.items : [];
+            const list = document.createElement("div");
+            list.className = "list";
 
-          // Section header
-          contentEl.appendChild(elCard(
-            "Данные раздела",
-            `${desc}\nИсточник: ${s.api()}`
-          ));
+            if (!items.length) {
+              list.appendChild(card("Уроков пока нет", "Добавь записи в таблицу lessons (SQLite), и они появятся тут."));
+            } else {
+              items.forEach(it => {
+                const el = document.createElement("div");
+                el.className = "item";
+                const post = it.post_url ? `<a class="link" href="${it.post_url}" target="_blank" rel="noopener">Открыть пост</a>` : "";
+                el.innerHTML = `
+                  <div class="itemTitle">${escapeHtml(it.ord)}. ${escapeHtml(it.title)}</div>
+                  <div class="itemMeta mono">message_id: ${escapeHtml(it.message_id)}</div>
+                  <div style="margin-top:8px">${post}</div>
+                `;
+                list.appendChild(el);
+              });
+            }
 
-          // Render list
-          const wrap = document.createElement("div");
-          wrap.className = "card";
-          wrap.innerHTML = `<div style="font-weight:700">Элементы</div><div class="muted" style="margin-top:6px">Пока можно держать пусто — инфраструктура уже работает.</div>`;
-          const list = document.createElement("div");
-          list.className = "list";
-
-          if (!items.length) {
-            const empty = document.createElement("div");
-            empty.className = "item";
-            empty.innerHTML = `<div class="left"><div class="t">Пусто</div><div class="s">В БД нет записей для этого раздела</div></div><div class="tag">—</div>`;
-            list.appendChild(empty);
-          } else {
-            items.forEach((it, idx) => {
-              // news: message_id, created_at, post_url
-              // lessons: ord, title, message_id, post_url
-              // links: title, url, ord
-              const title =
-                it.title ||
-                (typeof it.ord === "number" ? `Урок ${it.ord}` : `Элемент ${idx + 1}`);
-
-              const subtitle =
-                it.url ? it.url :
-                it.post_url ? it.post_url :
-                it.created_at ? it.created_at :
-                (it.message_id ? `message_id: ${it.message_id}` : "");
-
-              const href = it.url || it.post_url || "";
-
-              const row = document.createElement("div");
-              row.className = "item";
-              row.innerHTML = `
-                <div class="left">
-                  <div class="t">${escapeHtml(title)}</div>
-                  <div class="s">${escapeHtml(subtitle)}</div>
-                </div>
-                ${href ? `<a class="link" href="${href}" target="_blank" rel="noopener">Открыть ↗</a>` : `<span class="tag">—</span>`}
-              `;
-              list.appendChild(row);
-            });
+            contentEl.appendChild(card("Список уроков (из API)", `<div id="listMount"></div>`));
+            contentEl.lastChild.querySelector("#listMount").appendChild(list);
           }
 
-          wrap.appendChild(list);
-          contentEl.appendChild(wrap);
+          if (key === "links") {
+            const data = await apiGet("/links");
+            const items = Array.isArray(data.items) ? data.items : [];
+            const list = document.createElement("div");
+            list.className = "list";
+
+            if (!items.length) {
+              list.appendChild(card("Ссылок пока нет", "Добавь записи в таблицу links (SQLite), и они появятся тут."));
+            } else {
+              items.forEach(it => {
+                const el = document.createElement("div");
+                el.className = "item";
+                el.innerHTML = `
+                  <div class="itemTitle">${escapeHtml(it.title)}</div>
+                  <div style="margin-top:8px">
+                    <a class="link" href="${it.url}" target="_blank" rel="noopener">${escapeHtml(it.url)}</a>
+                  </div>
+                `;
+                list.appendChild(el);
+              });
+            }
+
+            contentEl.appendChild(card("Полезные ссылки (из API)", `<div id="listMount"></div>`));
+            contentEl.lastChild.querySelector("#listMount").appendChild(list);
+          }
+
+          if (key === "news") {
+            const data = await apiGet("/news");
+            const items = Array.isArray(data.items) ? data.items : [];
+            const list = document.createElement("div");
+            list.className = "list";
+
+            if (!items.length) {
+              list.appendChild(card("Новостей пока нет", "Добавь записи в таблицу news (SQLite), и они появятся тут."));
+            } else {
+              items.forEach(it => {
+                const el = document.createElement("div");
+                el.className = "item";
+                const post = it.post_url ? `<a class="link" href="${it.post_url}" target="_blank" rel="noopener">Открыть пост</a>` : "";
+                el.innerHTML = `
+                  <div class="itemTitle">Пост: ${escapeHtml(it.message_id)}</div>
+                  <div class="itemMeta mono">created_at: ${escapeHtml(it.created_at || "")}</div>
+                  <div style="margin-top:8px">${post}</div>
+                `;
+                list.appendChild(el);
+              });
+            }
+
+            contentEl.appendChild(card("Новости (из API)", `<div id="listMount"></div>`));
+            contentEl.lastChild.querySelector("#listMount").appendChild(list);
+          }
+
         } catch (e) {
-          contentEl.appendChild(elCard(
-            "Ошибка загрузки раздела",
-            `Не удалось загрузить данные.\nURL: ${s.api()}\n\n${String(e.message || e)}`
-          ));
+          contentEl.appendChild(card("Ошибка загрузки данных ❌", `
+            <div class="mono">${escapeHtml(e?.message || String(e))}</div>
+          `));
         }
 
-        location.hash = key;
+        contentEl.appendChild(card("Подсказка", `
+          Если ты видишь "API: OK" сверху — значит WebApp реально ходит в Railway.<br/>
+          Если изменения не видны — открой страницу с параметром <span class="mono">?v=2</span> или сделай жёсткую перезагрузку.
+        `));
       }
 
-      function escapeHtml(s) {
-        return String(s ?? "")
-          .replaceAll("&", "&amp;")
-          .replaceAll("<", "&lt;")
-          .replaceAll(">", "&gt;")
-          .replaceAll('"', "&quot;")
-          .replaceAll("'", "&#039;");
-      }
-
-      // ====== Start ======
+      // ====== START ======
       renderNav();
-      pingApi();
-
       const initial = (location.hash || "#prep").replace("#", "");
       setActive(initial);
       renderSection(initial);
