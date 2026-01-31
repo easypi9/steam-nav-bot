@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>STEAM Навигация</title>
     <style>
-      :root { --bg:#0b1220; --panel:#111a2e; --card:#0f1930; --text:#e8eefc; --muted:#a9b7db; --accent:#6aa7ff; --danger:#ff6a6a; }
+      :root { --bg:#0b1220; --panel:#111a2e; --card:#0f1930; --text:#e8eefc; --muted:#a9b7db; --accent:#6aa7ff; }
       * { box-sizing: border-box; }
       body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
       .app { display:flex; min-height:100vh; }
       .sidebar { width: 280px; background:var(--panel); padding:16px; border-right: 1px solid rgba(255,255,255,.08); }
-      .brand { font-weight:900; letter-spacing:.2px; margin-bottom:10px; }
+      .brand { font-weight:700; letter-spacing:.2px; margin-bottom:14px; }
       .sub { color:var(--muted); font-size:13px; margin-bottom:14px; line-height:1.35; }
       .nav { display:flex; flex-direction:column; gap:8px; }
-      .btn{
+      .btn {
         width:100%; text-align:left; padding:12px 12px; border-radius:12px;
         border: 1px solid rgba(255,255,255,.10);
         background: rgba(255,255,255,.04); color:var(--text); cursor:pointer;
@@ -23,40 +23,23 @@
       .btn.active { outline: 2px solid rgba(106,167,255,.55); background: rgba(106,167,255,.10); }
       .tag { font-size:12px; color:var(--muted); }
       .main { flex:1; padding:18px; }
-      .top { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; }
-      .title { font-size:18px; font-weight:900; }
-      .pill { padding:8px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12); color:var(--muted); font-size:12px; white-space:nowrap; }
-      .pill.ok { color: var(--text); border-color: rgba(106,167,255,.55); }
-      .pill.bad { color: var(--danger); border-color: rgba(255,106,106,.45); }
-      .cards { display:grid; grid-template-columns: 1fr; gap:12px; }
-      .card{
+      .top { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px; }
+      .title { font-size:18px; font-weight:700; }
+      .pill { padding:8px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12); color:var(--muted); font-size:12px; }
+      .card {
         background: var(--card);
         border: 1px solid rgba(255,255,255,.10);
         border-radius:16px;
         padding:14px;
       }
-      .row { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+      .cards { display:grid; grid-template-columns: 1fr; gap:12px; }
+      .row { display:flex; gap:10px; align-items:center; justify-content:space-between; }
       .muted { color:var(--muted); font-size:13px; line-height:1.45; }
       .small { font-size:12px; color:var(--muted); margin-top:8px; }
-      .list { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
-      .item { padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03); }
-      .itemTitle { font-weight:800; }
-      .itemSub { margin-top:6px; font-size:12px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; }
-      a { color: var(--accent); text-decoration:none; font-weight:750; }
-      a:hover { text-decoration: underline; }
-      code { color: var(--text); }
-      .miniBtn{
-        display:inline-flex; align-items:center; gap:8px;
-        padding:8px 10px; border-radius:999px;
-        border:1px solid rgba(255,255,255,.12);
-        background: rgba(255,255,255,.04);
-        color: var(--text);
-        cursor:pointer;
-        font-size:12px;
-        text-decoration:none;
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      @media (max-width: 820px) {
+        .sidebar { width: 220px; }
       }
-      .miniBtn:hover{ border-color: rgba(106,167,255,.45); }
-      @media (max-width: 820px) { .sidebar { width: 220px; } }
       @media (max-width: 650px) {
         .app { flex-direction: column; }
         .sidebar { width:100%; border-right:none; border-bottom: 1px solid rgba(255,255,255,.08); }
@@ -67,9 +50,7 @@
     <div class="app">
       <aside class="sidebar">
         <div class="brand">📚 STEAM Навигация</div>
-        <div class="sub" id="sub">
-          WebApp читает данные из API (локально или с сервера).
-        </div>
+        <div class="sub">Боковое меню. Сейчас подключаем API (Railway). Дальше выведем уроки и ссылки.</div>
 
         <nav class="nav" id="nav"></nav>
 
@@ -80,10 +61,7 @@
       <main class="main">
         <div class="top">
           <div class="title" id="screenTitle">Загрузка…</div>
-          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-            <a class="miniBtn" id="chatBtn" href="#" target="_blank" rel="noopener" style="display:none;">💬 Открыть чат</a>
-            <div class="pill" id="pill">offline</div>
-          </div>
+          <div class="pill" id="pill">offline</div>
         </div>
 
         <div class="cards" id="content"></div>
@@ -91,12 +69,10 @@
     </div>
 
     <script>
-      const DEFAULT_API = "http://127.0.0.1:3000";
-      const qs = new URLSearchParams(location.search);
-      const API = (qs.get("api") || DEFAULT_API).replace(/\/+$/, "");
+      // ✅ Твой Railway API
+      const API_URL = "https://steam-nav-bot-production.up.railway.app";
 
       const sections = [
-        { key: "continue", label: "▶️ Продолжить", desc: "Твоя точка прогресса." },
         { key: "prep", label: "🧩 Подготовительный курс", desc: "Уроки с нуля: подготовка к STEAM." },
         { key: "steam", label: "🚀 Курс STEAM", desc: "Основной курс, модули и практика." },
         { key: "news", label: "🗞 Новости", desc: "Анонсы, обновления, события." },
@@ -109,39 +85,44 @@
       const pillEl = document.getElementById("pill");
       const tgHintEl = document.getElementById("tgHint");
       const apiHintEl = document.getElementById("apiHint");
-      const chatBtn = document.getElementById("chatBtn");
-
-      const tg = window.Telegram?.WebApp;
-      const userId = tg?.initDataUnsafe?.user?.id || null;
-
-      let META = { channel_username: "", chat_url: "" };
-
-      function setPillOk(text){
-        pillEl.textContent = text;
-        pillEl.classList.remove("bad");
-        pillEl.classList.add("ok");
-      }
-      function setPillBad(text){
-        pillEl.textContent = text;
-        pillEl.classList.remove("ok");
-        pillEl.classList.add("bad");
-      }
-
-      if (tg) {
-        setPillOk("telegram webapp");
-        tgHintEl.textContent = userId
-          ? `Telegram user_id: ${userId}`
-          : "Открыто в Telegram ✅ (user_id не найден)";
-        try { tg.expand(); } catch {}
-      } else {
-        setPillOk("browser");
-        tgHintEl.textContent = "Открыто в браузере (предпросмотр).";
-      }
-
-      apiHintEl.innerHTML = `API: <code>${API}</code> (можно сменить через <code>?api=...</code>)`;
 
       function setActive(key) {
         document.querySelectorAll(".btn").forEach(b => b.classList.toggle("active", b.dataset.key === key));
+      }
+
+      function renderSection(key) {
+        const s = sections.find(x => x.key === key) || sections[0];
+        titleEl.textContent = s.label;
+
+        const cards = [
+          {
+            title: "Инфраструктура готова ✅",
+            body: "Этот экран — WebApp внутри Telegram. Следующий шаг — вывод данных из API: уроки, новости, ссылки."
+          },
+          {
+            title: "API подключён",
+            body: `API_URL: ${API_URL}\nПроверь: /health и /meta`
+          },
+          {
+            title: "Что будет дальше",
+            body: "• список уроков + поиск\n• кнопка «Продолжить»\n• отметка прогресса\n• открытие постов канала\n• админ-режим"
+          }
+        ];
+
+        contentEl.innerHTML = "";
+        cards.forEach(c => {
+          const div = document.createElement("div");
+          div.className = "card";
+          div.innerHTML = `
+            <div class="row">
+              <div style="font-weight:700">${c.title}</div>
+            </div>
+            <div class="muted" style="margin-top:8px; white-space:pre-line">${c.body}</div>
+          `;
+          contentEl.appendChild(div);
+        });
+
+        location.hash = key;
       }
 
       function renderNav() {
@@ -156,185 +137,32 @@
         });
       }
 
-      function card(title, bodyHtml) {
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <div class="row">
-            <div style="font-weight:900">${title}</div>
-          </div>
-          <div class="muted" style="margin-top:8px; white-space:pre-line">${bodyHtml}</div>
-        `;
-        return div;
-      }
-
-      function listCard(title, itemsHtml) {
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <div class="row">
-            <div style="font-weight:900">${title}</div>
-          </div>
-          <div class="list">${itemsHtml}</div>
-        `;
-        return div;
-      }
-
-      async function apiGet(path) {
-        const url = API + path;
-        const r = await fetch(url);
-        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-        return await r.json();
-      }
-
-      function itemHtml(title, subHtml, linkUrl) {
-        const titleHtml = linkUrl
-          ? `<a href="${linkUrl}" target="_blank" rel="noopener">${title}</a>`
-          : `<span class="itemTitle">${title}</span>`;
-        return `
-          <div class="item">
-            <div class="itemTitle">${titleHtml}</div>
-            <div class="itemSub">${subHtml || ""}</div>
-          </div>
-        `;
-      }
-
-      async function loadMeta() {
+      async function pingApi() {
         try {
-          const m = await apiGet("/meta");
-          META = { channel_username: m.channel_username || "", chat_url: m.chat_url || "" };
-
-          if (META.chat_url) {
-            chatBtn.href = META.chat_url;
-            chatBtn.style.display = "inline-flex";
-          }
+          const r = await fetch(`${API_URL}/health`, { method: "GET" });
+          if (!r.ok) throw new Error("bad status");
+          pillEl.textContent = "api online";
+          apiHintEl.textContent = "API доступен ✅";
         } catch (e) {
-          // meta не критичен
+          pillEl.textContent = "api offline";
+          apiHintEl.textContent = "API недоступен ❌";
         }
       }
 
-      async function renderContinue() {
-        titleEl.textContent = "▶️ Продолжить";
-        contentEl.innerHTML = "";
-
-        if (!userId) {
-          contentEl.appendChild(card(
-            "Нет user_id",
-            "Открой WebApp из Telegram, чтобы видеть прогресс.\nСейчас можно тестировать разделы."
-          ));
-          return;
-        }
-
-        try {
-          const data = await apiGet(`/progress?user_id=${encodeURIComponent(userId)}`);
-          const items = data.items || [];
-          if (!items.length) {
-            contentEl.appendChild(card(
-              "Пока нет прогресса",
-              "Прогресс появится, когда ты отметишь урок как текущий в боте (кнопка «✅ Текущий»)."
-            ));
-            return;
-          }
-
-          const html = items.map(i => {
-            const secLabel = (i.section === "prep") ? "🧩 Подготовка" : "🚀 STEAM";
-            const title = i.title ? `${secLabel} — ${i.ord}. ${i.title}` : `${secLabel} — урок ${i.ord}`;
-            const sub = `updated: ${i.updated_at || "-"}` + (i.message_id ? ` • message_id: ${i.message_id}` : "");
-            return itemHtml(title, sub, i.post_url || null);
-          }).join("");
-
-          contentEl.appendChild(listCard("Твои точки прогресса", html));
-        } catch (e) {
-          setPillBad("api error");
-          contentEl.appendChild(card("API недоступен", String(e)));
-        }
+      // Telegram WebApp awareness
+      const tg = window.Telegram?.WebApp;
+      if (tg) {
+        tgHintEl.textContent = "Открыто внутри Telegram ✅";
+        try { tg.expand(); } catch {}
+      } else {
+        tgHintEl.textContent = "Открыто в браузере (предпросмотр).";
       }
 
-      async function renderLessons(sectionKey) {
-        const label = sectionKey === "prep" ? "🧩 Подготовительный курс" : "🚀 Курс STEAM";
-        titleEl.textContent = label;
-        contentEl.innerHTML = "";
-
-        try {
-          const data = await apiGet(`/lessons?section=${encodeURIComponent(sectionKey)}`);
-          const items = data.items || [];
-          if (!items.length) {
-            contentEl.appendChild(card("Пока пусто", "Уроки появятся, когда ты добавишь их через /add_lesson в боте."));
-            return;
-          }
-
-          const html = items.map(it => {
-            const sub = `message_id: ${it.message_id}`;
-            return itemHtml(`${it.ord}. ${it.title}`, sub, it.post_url || null);
-          }).join("");
-
-          contentEl.appendChild(listCard("Уроки", html));
-        } catch (e) {
-          setPillBad("api error");
-          contentEl.appendChild(card("API недоступен", String(e)));
-        }
-      }
-
-      async function renderNews() {
-        titleEl.textContent = "🗞 Новости";
-        contentEl.innerHTML = "";
-
-        try {
-          const data = await apiGet(`/news`);
-          const items = data.items || [];
-          if (!items.length) {
-            contentEl.appendChild(card("Пока нет новостей", "Добавляй #news в посты канала — бот их соберёт."));
-            return;
-          }
-
-          const html = items.slice(0, 50).map((it, idx) => {
-            const sub = `message_id: ${it.message_id}` + (it.created_at ? ` • ${it.created_at}` : "");
-            return itemHtml(`Новость ${idx + 1}`, sub, it.post_url || null);
-          }).join("");
-
-          contentEl.appendChild(listCard("Последние новости", html));
-        } catch (e) {
-          setPillBad("api error");
-          contentEl.appendChild(card("API недоступен", String(e)));
-        }
-      }
-
-      async function renderLinks() {
-        titleEl.textContent = "🔗 Полезные ссылки";
-        contentEl.innerHTML = "";
-
-        try {
-          const data = await apiGet(`/links`);
-          const items = data.items || [];
-          if (!items.length) {
-            contentEl.appendChild(card("Пока пусто", "Ссылки появятся, когда ты добавишь их через /add_link в боте."));
-            return;
-          }
-
-          const html = items.map(it => itemHtml(it.title, `ord: ${it.ord}`, it.url)).join("");
-          contentEl.appendChild(listCard("Ссылки", html));
-        } catch (e) {
-          setPillBad("api error");
-          contentEl.appendChild(card("API недоступен", String(e)));
-        }
-      }
-
-      async function renderSection(key) {
-        setActive(key);
-        location.hash = key;
-
-        if (key === "continue") return renderContinue();
-        if (key === "prep" || key === "steam") return renderLessons(key);
-        if (key === "news") return renderNews();
-        if (key === "links") return renderLinks();
-      }
-
-      // ---- init ----
       renderNav();
-      loadMeta();
-
       const initial = (location.hash || "#prep").replace("#", "");
+      setActive(initial);
       renderSection(initial);
+      pingApi();
     </script>
   </body>
 </html>
