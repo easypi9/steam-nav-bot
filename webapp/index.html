@@ -5,14 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>STEAM Навигация</title>
     <style>
-      :root { --bg:#0b1220; --panel:#111a2e; --card:#0f1930; --text:#e8eefc; --muted:#a9b7db; --accent:#6aa7ff; --ok:#38d39f; --bad:#ff6a6a; }
+      :root {
+        --bg:#0b1220; --panel:#111a2e; --card:#0f1930; --text:#e8eefc; --muted:#a9b7db; --accent:#6aa7ff;
+        --ok:#38d39f; --bad:#ff6a6a; --warn:#ffd36a;
+        --line: rgba(255,255,255,.10);
+      }
       * { box-sizing: border-box; }
       body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+
       .app { display:flex; min-height:100vh; }
       .sidebar { width: 280px; background:var(--panel); padding:16px; border-right: 1px solid rgba(255,255,255,.08); }
-      .brand { font-weight:700; letter-spacing:.2px; margin-bottom:14px; }
+      .brand { font-weight:800; letter-spacing:.2px; margin-bottom:10px; display:flex; gap:10px; align-items:center; }
       .sub { color:var(--muted); font-size:13px; margin-bottom:14px; line-height:1.35; }
       .nav { display:flex; flex-direction:column; gap:8px; }
+
       .btn {
         width:100%; text-align:left; padding:12px 12px; border-radius:12px;
         border: 1px solid rgba(255,255,255,.10);
@@ -22,45 +28,62 @@
       .btn:hover { border-color: rgba(106,167,255,.45); }
       .btn.active { outline: 2px solid rgba(106,167,255,.55); background: rgba(106,167,255,.10); }
       .tag { font-size:12px; color:var(--muted); }
+
+      .small { font-size:12px; color:var(--muted); margin-top:10px; white-space:pre-line; }
+
       .main { flex:1; padding:18px; }
       .top { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px; }
-      .title { font-size:18px; font-weight:700; }
+      .title { font-size:18px; font-weight:800; }
       .right { display:flex; gap:10px; align-items:center; }
+
       .pill {
         padding:8px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12);
-        color:var(--muted); font-size:12px;
+        color:var(--muted); font-size:12px; user-select:none;
       }
       .pill.ok { border-color: rgba(56,211,159,.35); color: var(--ok); }
       .pill.bad { border-color: rgba(255,106,106,.35); color: var(--bad); }
+      .pill.warn { border-color: rgba(255,211,106,.35); color: var(--warn); }
+
       .linkbtn{
         padding:8px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12);
         background: rgba(255,255,255,.04); color:var(--text); cursor:pointer; font-size:12px;
       }
       .linkbtn:hover{ border-color: rgba(106,167,255,.45); }
+
+      .cards { display:grid; grid-template-columns: 1fr; gap:12px; }
       .card {
         background: var(--card);
-        border: 1px solid rgba(255,255,255,.10);
+        border: 1px solid var(--line);
         border-radius:16px;
         padding:14px;
       }
-      .cards { display:grid; grid-template-columns: 1fr; gap:12px; }
       .row { display:flex; gap:10px; align-items:center; justify-content:space-between; }
       .muted { color:var(--muted); font-size:13px; line-height:1.45; }
-      a { color: var(--accent); text-decoration: none; font-weight: 600; }
+      a { color: var(--accent); text-decoration: none; font-weight: 700; }
       a:hover { text-decoration: underline; }
-      pre {
-        margin: 10px 0 0;
-        padding: 10px;
-        border-radius: 12px;
-        background: rgba(0,0,0,.25);
-        overflow:auto;
-        border:1px solid rgba(255,255,255,.08);
-        color: #dbe6ff;
-        font-size: 12px;
+
+      .list { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+      .item {
+        display:flex; justify-content:space-between; gap:12px; align-items:flex-start;
+        padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,.10);
+        background: rgba(255,255,255,.03);
       }
-      .small { font-size:12px; color:var(--muted); margin-top:10px; white-space:pre-line; }
-      ul { margin: 8px 0 0 18px; padding: 0; }
-      li { margin: 6px 0; }
+      .item:hover { border-color: rgba(106,167,255,.40); }
+      .itemTitle { font-weight:800; line-height:1.25; }
+      .itemMeta { color:var(--muted); font-size:12px; margin-top:6px; }
+      .itemRight { display:flex; gap:8px; align-items:center; flex-shrink:0; }
+
+      .btn2 {
+        padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12);
+        background: rgba(255,255,255,.04); color:var(--text); cursor:pointer; font-weight:800; font-size:12px;
+      }
+      .btn2:hover { border-color: rgba(106,167,255,.45); }
+
+      .empty {
+        padding:14px; border-radius:16px; border:1px dashed rgba(255,255,255,.18);
+        color:var(--muted); line-height:1.45;
+      }
+
       @media (max-width: 820px) { .sidebar { width: 220px; } }
       @media (max-width: 650px) {
         .app { flex-direction: column; }
@@ -71,11 +94,9 @@
   <body>
     <div class="app">
       <aside class="sidebar">
-        <div class="brand">📚 STEAM Навигация</div>
-        <div class="sub">Меню + подключение к API (Railway). Если API недоступен — увидишь ошибку сверху.</div>
-
+        <div class="brand"><span>📚</span><span>STEAM Навигация</span></div>
+        <div class="sub">Выбирай раздел и открывай материалы. Если API недоступен — увидишь ошибку сверху.</div>
         <nav class="nav" id="nav"></nav>
-
         <div class="small" id="sideInfo"></div>
       </aside>
 
@@ -84,7 +105,7 @@
           <div class="title" id="screenTitle">Загрузка…</div>
           <div class="right">
             <button class="linkbtn" id="reloadBtn">↻ Обновить</button>
-            <div class="pill" id="tgPill">browser preview</div>
+            <div class="pill" id="tgPill">browser</div>
             <div class="pill" id="apiPill">API: ...</div>
           </div>
         </div>
@@ -102,14 +123,17 @@
         (localStorage.getItem("API_BASE") || "").trim() ||
         "https://steam-nav-bot-production.up.railway.app";
 
+      // Можно открывать раздел через ?section=prep
+      const SECTION_FROM_QS = (qs.get("section") || "").trim();
+
       // Чтобы тестировать новое без кэша: добавляй ?v=13 (любой номер)
       const NO_CACHE = { cache: "no-store" };
 
       const sections = [
-        { key: "prep", label: "🧩 Подготовительный курс", desc: "Уроки с нуля: подготовка к STEAM." },
-        { key: "steam", label: "🚀 Курс STEAM", desc: "Основной курс, модули и практика." },
-        { key: "news", label: "🗞 Новости", desc: "Анонсы, обновления, события." },
-        { key: "links", label: "🔗 Полезные ссылки", desc: "Ресурсы, сервисы, материалы." },
+        { key: "prep",  label: "🧩 Подготовительный курс", desc: "Уроки с нуля: подготовка к STEAM." },
+        { key: "steam", label: "🚀 Курс STEAM",          desc: "Основной курс, модули и практика." },
+        { key: "news",  label: "🗞 Новости",             desc: "Анонсы, обновления, события." },
+        { key: "links", label: "🔗 Полезные ссылки",     desc: "Ресурсы, сервисы, материалы." },
       ];
 
       const navEl = document.getElementById("nav");
@@ -124,18 +148,66 @@
         document.querySelectorAll(".btn").forEach(b => b.classList.toggle("active", b.dataset.key === key));
       }
 
-      function safeJsonString(obj) {
+      function safeJson(obj) {
         try { return JSON.stringify(obj, null, 2); } catch { return String(obj); }
       }
 
-      function card(title, bodyHtml) {
+      function card(title, subtitle, bodyNode) {
         const div = document.createElement("div");
         div.className = "card";
-        div.innerHTML = `
-          <div class="row"><div style="font-weight:700">${title}</div></div>
-          <div class="muted" style="margin-top:8px">${bodyHtml}</div>
-        `;
+
+        const top = document.createElement("div");
+        top.className = "row";
+
+        const left = document.createElement("div");
+        left.innerHTML = `<div style="font-weight:800">${title}</div>` + (subtitle ? `<div class="muted" style="margin-top:6px">${subtitle}</div>` : "");
+        top.appendChild(left);
+
+        div.appendChild(top);
+        if (bodyNode) div.appendChild(bodyNode);
         return div;
+      }
+
+      function emptyBlock(text) {
+        const d = document.createElement("div");
+        d.className = "empty";
+        d.textContent = text;
+        return d;
+      }
+
+      function itemRow({ title, meta, url, rightLabel }) {
+        const row = document.createElement("div");
+        row.className = "item";
+
+        const left = document.createElement("div");
+        left.style.flex = "1";
+
+        const t = document.createElement("div");
+        t.className = "itemTitle";
+        t.textContent = title;
+
+        const m = document.createElement("div");
+        m.className = "itemMeta";
+        m.textContent = meta || "";
+
+        left.appendChild(t);
+        if (meta) left.appendChild(m);
+
+        const right = document.createElement("div");
+        right.className = "itemRight";
+
+        if (url) {
+          const a = document.createElement("a");
+          a.href = url;
+          a.target = "_blank";
+          a.rel = "noreferrer";
+          a.textContent = rightLabel || "Открыть";
+          right.appendChild(a);
+        }
+
+        row.appendChild(left);
+        row.appendChild(right);
+        return row;
       }
 
       async function apiGet(path) {
@@ -153,123 +225,18 @@
         return { url, data };
       }
 
-      async function loadMetaAndMarkApi() {
+      async function markApiStatus() {
         try {
-          const { data } = await apiGet("/meta");
+          await apiGet("/health");
           apiPillEl.textContent = "API: OK";
-          apiPillEl.classList.remove("bad");
+          apiPillEl.classList.remove("bad", "warn");
           apiPillEl.classList.add("ok");
-
-          sideInfoEl.textContent = `Открыто: ${window.Telegram?.WebApp ? "Telegram ✅" : "браузер (предпросмотр)"}\nAPI_BASE: ${API_BASE}`;
-          return data;
-        } catch (e) {
+          return true;
+        } catch {
           apiPillEl.textContent = "API: ERROR";
-          apiPillEl.classList.remove("ok");
+          apiPillEl.classList.remove("ok", "warn");
           apiPillEl.classList.add("bad");
-          sideInfoEl.textContent = `Открыто: ${window.Telegram?.WebApp ? "Telegram ✅" : "браузер (предпросмотр)"}\nAPI_BASE: ${API_BASE}`;
-          throw e;
-        }
-      }
-
-      async function renderSection(key) {
-        const s = sections.find(x => x.key === key) || sections[0];
-        titleEl.textContent = s.label;
-
-        contentEl.innerHTML = "";
-        // Всегда перезапрашиваем данные заново
-        try {
-          const meta = await loadMetaAndMarkApi();
-
-          // Карточка META
-          contentEl.appendChild(card("Связь с API ✅", `META из API:<pre>${safeJsonString(meta)}</pre>`));
-
-          if (key === "prep" || key === "steam") {
-            const { data, url } = await apiGet(`/lessons?section=${encodeURIComponent(key)}`);
-            const items = Array.isArray(data?.items) ? data.items : [];
-            const debug = `<div>GET: <a href="${url}" target="_blank" rel="noreferrer">${url}</a></div><pre>${safeJsonString(data)}</pre>`;
-            contentEl.appendChild(card("Ответ /lessons (debug)", debug));
-
-            if (!items.length) {
-              contentEl.appendChild(card("Список уроков (из API)", `Уроков пока нет.<div class="small">Если ты добавил урок и он не появляется — значит в Railway БД он ещё не записан или контейнер перезапустился и потерял файл bot.db.</div>`));
-            } else {
-              const list = document.createElement("div");
-              list.className = "card";
-              list.innerHTML = `
-                <div class="row"><div style="font-weight:700">Список уроков (из API)</div></div>
-                <ul id="lessonList"></ul>
-                <div class="small">Обновлено: ${new Date().toLocaleString()}</div>
-              `;
-              contentEl.appendChild(list);
-
-              const ul = list.querySelector("#lessonList");
-              items.forEach((it) => {
-                const li = document.createElement("li");
-                const post = it.post_url || "";
-                li.innerHTML = `${it.ord}. ${it.title} ${post ? `— <a href="${post}" target="_blank" rel="noreferrer">открыть пост</a>` : ""}`;
-                ul.appendChild(li);
-              });
-            }
-          }
-
-          if (key === "links") {
-            const { data, url } = await apiGet("/links");
-            const items = Array.isArray(data?.items) ? data.items : [];
-            contentEl.appendChild(card("Ответ /links (debug)", `<div>GET: <a href="${url}" target="_blank" rel="noreferrer">${url}</a></div><pre>${safeJsonString(data)}</pre>`));
-
-            if (!items.length) {
-              contentEl.appendChild(card("Полезные ссылки", "Ссылок пока нет."));
-            } else {
-              const ul = document.createElement("ul");
-              items.forEach((it) => {
-                const li = document.createElement("li");
-                li.innerHTML = `<a href="${it.url}" target="_blank" rel="noreferrer">${it.title}</a>`;
-                ul.appendChild(li);
-              });
-              const wrap = document.createElement("div");
-              wrap.className = "card";
-              wrap.innerHTML = `<div class="row"><div style="font-weight:700">Полезные ссылки</div></div>`;
-              wrap.appendChild(ul);
-              contentEl.appendChild(wrap);
-            }
-          }
-
-          if (key === "news") {
-            const { data, url } = await apiGet("/news");
-            const items = Array.isArray(data?.items) ? data.items : [];
-            contentEl.appendChild(card("Ответ /news (debug)", `<div>GET: <a href="${url}" target="_blank" rel="noreferrer">${url}</a></div><pre>${safeJsonString(data)}</pre>`));
-
-            if (!items.length) {
-              contentEl.appendChild(card("Новости", "Новостей пока нет."));
-            } else {
-              const ul = document.createElement("ul");
-              items.forEach((it) => {
-                const post = it.post_url || "";
-                const li = document.createElement("li");
-                li.innerHTML = post ? `<a href="${post}" target="_blank" rel="noreferrer">${it.message_id}</a> <span class="muted">(${it.created_at})</span>` : `${it.message_id} <span class="muted">(${it.created_at})</span>`;
-                ul.appendChild(li);
-              });
-              const wrap = document.createElement("div");
-              wrap.className = "card";
-              wrap.innerHTML = `<div class="row"><div style="font-weight:700">Новости</div></div>`;
-              wrap.appendChild(ul);
-              contentEl.appendChild(wrap);
-            }
-          }
-
-          // обновим hash
-          location.hash = key;
-
-        } catch (e) {
-          apiPillEl.textContent = "API: ERROR";
-          apiPillEl.classList.remove("ok");
-          apiPillEl.classList.add("bad");
-
-          const msg = `
-            <div>Не удалось получить данные с API.</div>
-            <div class="small">API_BASE: ${API_BASE}</div>
-            <pre>${safeJsonString({ message: e?.message, url: e?.url, data: e?.data })}</pre>
-          `;
-          contentEl.appendChild(card("Ошибка API ❌", msg));
+          return false;
         }
       }
 
@@ -280,28 +247,196 @@
           btn.className = "btn";
           btn.dataset.key = s.key;
           btn.innerHTML = `<span>${s.label}</span><span class="tag">раздел</span>`;
-          btn.onclick = () => { setActive(s.key); renderSection(s.key); };
+          btn.onclick = () => {
+            setActive(s.key);
+            renderSection(s.key);
+          };
           navEl.appendChild(btn);
         });
       }
 
-      // Telegram awareness
-      const tg = window.Telegram?.WebApp;
-      if (tg) {
-        tgPillEl.textContent = "telegram webapp";
-        try { tg.expand(); } catch {}
-      } else {
-        tgPillEl.textContent = "browser preview";
+      function getInitialSection() {
+        // priority: ?section= , then #hash, else prep
+        if (SECTION_FROM_QS && sections.some(x => x.key === SECTION_FROM_QS)) return SECTION_FROM_QS;
+        const h = (location.hash || "").replace("#", "").trim();
+        if (h && sections.some(x => x.key === h)) return h;
+        return "prep";
       }
 
+      function setHash(key) {
+        location.hash = key;
+      }
+
+      function telegramInit() {
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+          tgPillEl.textContent = "telegram";
+          try { tg.expand(); } catch {}
+        } else {
+          tgPillEl.textContent = "browser";
+        }
+      }
+
+      async function renderLessons(sectionKey) {
+        const s = sections.find(x => x.key === sectionKey);
+        const wrapper = document.createElement("div");
+        wrapper.className = "list";
+
+        const { data } = await apiGet(`/lessons?section=${encodeURIComponent(sectionKey)}`);
+        const items = Array.isArray(data?.items) ? data.items : [];
+
+        if (!items.length) {
+          wrapper.appendChild(emptyBlock("Пока нет уроков в этом разделе. Скоро добавим 🚀"));
+          return card(s.label, s.desc, wrapper);
+        }
+
+        items.forEach((it) => {
+          const title = `${it.ord}. ${it.title}`;
+          const url = it.post_url || (it.message_id ? `https://t.me/${it.message_id}` : "");
+          wrapper.appendChild(itemRow({
+            title,
+            meta: "Откроется пост в канале",
+            url,
+            rightLabel: "Открыть пост"
+          }));
+        });
+
+        return card(s.label, s.desc, wrapper);
+      }
+
+      async function renderLinks() {
+        const s = sections.find(x => x.key === "links");
+        const wrapper = document.createElement("div");
+        wrapper.className = "list";
+
+        const { data } = await apiGet("/links");
+        const items = Array.isArray(data?.items) ? data.items : [];
+
+        if (!items.length) {
+          wrapper.appendChild(emptyBlock("Пока нет ссылок. Админ добавит — они появятся здесь."));
+          return card(s.label, s.desc, wrapper);
+        }
+
+        items.forEach((it) => {
+          wrapper.appendChild(itemRow({
+            title: it.title || it.url,
+            meta: it.url,
+            url: it.url,
+            rightLabel: "Открыть"
+          }));
+        });
+
+        return card(s.label, s.desc, wrapper);
+      }
+
+      async function renderNews() {
+        const s = sections.find(x => x.key === "news");
+        const wrapper = document.createElement("div");
+        wrapper.className = "list";
+
+        const { data } = await apiGet("/news");
+        const items = Array.isArray(data?.items) ? data.items : [];
+
+        if (!items.length) {
+          wrapper.appendChild(emptyBlock("Пока нет новостей. Админ добавит — они появятся здесь."));
+          return card(s.label, s.desc, wrapper);
+        }
+
+        items.forEach((it, idx) => {
+          const title = `Новость ${idx + 1}`;
+          const meta = it.created_at ? `Добавлено: ${it.created_at}` : "";
+          const url = it.post_url || "";
+          wrapper.appendChild(itemRow({
+            title,
+            meta,
+            url,
+            rightLabel: "Открыть пост"
+          }));
+        });
+
+        return card(s.label, s.desc, wrapper);
+      }
+
+      async function renderSection(key) {
+        const sec = sections.find(x => x.key === key) || sections[0];
+        titleEl.textContent = sec.label;
+
+        contentEl.innerHTML = "";
+        setHash(key);
+
+        // always show side info
+        sideInfoEl.textContent =
+          `API_BASE: ${API_BASE}\n` +
+          (window.Telegram?.WebApp ? "Открыто внутри Telegram ✅" : "Открыто в браузере (предпросмотр)");
+
+        const apiOk = await markApiStatus();
+        if (!apiOk) {
+          const body = document.createElement("div");
+          body.className = "list";
+          body.appendChild(emptyBlock("API недоступен. Нажми «↻ Обновить» или открой позже."));
+          const errCard = card("Ошибка подключения", "Сервис API не отвечает.", body);
+          contentEl.appendChild(errCard);
+          return;
+        }
+
+        // main content
+        try {
+          if (key === "prep" || key === "steam") {
+            const c = await renderLessons(key);
+            contentEl.appendChild(c);
+
+            // маленькая “заглушка” под будущий прогресс
+            const b = document.createElement("div");
+            b.className = "list";
+            b.appendChild(emptyBlock("Скоро тут появится кнопка «Продолжить обучение» и прогресс пользователя."));
+            contentEl.appendChild(card("Продолжить", "Автоматически откроем следующий урок.", b));
+            return;
+          }
+
+          if (key === "links") {
+            contentEl.appendChild(await renderLinks());
+            return;
+          }
+
+          if (key === "news") {
+            contentEl.appendChild(await renderNews());
+            return;
+          }
+        } catch (e) {
+          apiPillEl.textContent = "API: ERROR";
+          apiPillEl.classList.remove("ok", "warn");
+          apiPillEl.classList.add("bad");
+
+          const body = document.createElement("div");
+          body.className = "list";
+          body.appendChild(emptyBlock("Не удалось загрузить данные. Нажми «↻ Обновить»."));
+          const pre = document.createElement("pre");
+          pre.style.margin = "10px 0 0";
+          pre.style.padding = "10px";
+          pre.style.borderRadius = "12px";
+          pre.style.background = "rgba(0,0,0,.25)";
+          pre.style.border = "1px solid rgba(255,255,255,.08)";
+          pre.style.overflow = "auto";
+          pre.style.color = "#dbe6ff";
+          pre.style.fontSize = "12px";
+          pre.textContent = safeJson({ message: e?.message, url: e?.url, data: e?.data });
+          body.appendChild(pre);
+
+          contentEl.appendChild(card("Ошибка загрузки", "Данные с API не пришли.", body));
+        }
+      }
+
+      // Init
+      telegramInit();
+      renderNav();
+
       reloadBtn.onclick = () => {
-        // перерисовать текущий раздел и принудительно фетчнуть заново
-        const current = (location.hash || "#prep").replace("#", "");
+        const current = getInitialSection();
+        setActive(current);
         renderSection(current);
       };
 
-      renderNav();
-      const initial = (location.hash || "#prep").replace("#", "");
+      const initial = getInitialSection();
       setActive(initial);
       renderSection(initial);
     </script>
