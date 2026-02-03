@@ -1,6 +1,20 @@
-import Database from "better-sqlite3";
+// db.ts — ПОЛНАЯ ЗАМЕНА (сохраняем твою схему, меняем только путь БД)
 
-export const db = new Database("bot.db");
+import Database from "better-sqlite3";
+import fs from "node:fs";
+import path from "node:path";
+
+// Railway Volume будем монтировать в /data
+// Можно переопределить через переменную окружения DB_PATH
+const DB_PATH = (process.env.DB_PATH || "/data/bot.db").trim();
+
+// гарантируем, что папка под БД существует
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+
+export const db = new Database(DB_PATH);
+
+// (опционально, но полезно для стабильности sqlite)
+db.pragma("journal_mode = WAL");
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS lessons (
