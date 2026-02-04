@@ -54,6 +54,9 @@ const pendingByUser = new Map<number, Pending>();
 function startKeyboard(userId?: number) {
   const rows: any[] = [];
 
+  // ✅ A4: Continue button
+  rows.push([Markup.button.callback("▶️ Продолжить обучение", "continue")]);
+
   rows.push([
     Markup.button.webApp("📱 Открыть каталог", webappMain),
     Markup.button.webApp("🧩 Подготовительный", webappSectionUrl("prep")),
@@ -64,12 +67,11 @@ function startKeyboard(userId?: number) {
     Markup.button.webApp("🗞 Новости", webappSectionUrl("news")),
   ]);
 
-  rows.push([
-    Markup.button.webApp("🔗 Полезные ссылки", webappSectionUrl("links")),
-  ]);
+  rows.push([Markup.button.webApp("🔗 Полезные ссылки", webappSectionUrl("links"))]);
 
   if (CHAT_URL) rows.push([Markup.button.url("💬 Чат-обсуждение", CHAT_URL)]);
-  if (CHANNEL_USERNAME) rows.push([Markup.button.url("📣 Канал", `https://t.me/${CHANNEL_USERNAME}`)]);
+  if (CHANNEL_USERNAME)
+    rows.push([Markup.button.url("📣 Канал", `https://t.me/${CHANNEL_USERNAME}`)]);
 
   if (isAdmin(userId)) rows.push([Markup.button.callback("🛠 Админ-панель", "admin:open")]);
 
@@ -116,9 +118,78 @@ function formatLessonList(section: "prep" | "steam") {
 
   if (!rows.length) return `Уроков в ${section} пока нет.`;
 
-  return rows
-    .map((r) => `${r.ord}. ${r.title}\n${postUrl(r.message_id)}`)
-    .join("\n\n");
+  return rows.map((r) => `${r.ord}. ${r.title}\n${postUrl(r.message_id)}`).join("\n\n");
+}
+
+// ✅ A4: read progress
+function getProgress(userId: number) {
+  return db
+    .prepare("SELECT section, ord, updated_at FROM progress WHERE user_id=?")
+    .all(userId) as Array<{ section: "prep" | "steam"; ord: number; updated_at: string }>;
+}
+
+// ✅ A4: continue handler
+async function handleContinue(ctx: any) {
+  const uid = ctx.from?.id;
+  if (!uid) return;
+
+  const progress = getProgress(uid);
+
+  if (!progress.length) {
+    await ctx.reply(
+      [
+        "Пока нет прогресса.",
+        "Открой любой урок в WebApp — и он запомнит, где ты остановился 👌",
+        "",
+        "Нажми «📱 Открыть каталог» и выбери урок.",
+      ].join("\n"),
+      startKeyboard(uid)
+    );
+    return;
+  }
+
+  // For stable order: prep first, then steam
+  const order: Array<"prep" | "steam"> = ["prep", "steam"];
+  const sorted = [...progress].sort(
+    (a, b) => order.indexOf(a.section) - order.indexOf(b.section)
+  );
+
+  const lines: string[] = [];
+  const rows: any[] = [];
+
+  for (const p of sorted) {
+    const lesson = db
+      .prepare("SELECT title, message_id FROM lessons WHERE section=? AND ord=?")
+      .get(p.section, p.ord) as { title: string; message_id: number } | undefined;
+
+    const sectionLabel = p.section === "prep" ? "🧩 Подготовительный" : "🚀 STEAM";
+
+    if (!lesson) {
+      lines.push(`${sectionLabel}: урок ${p.ord} (в БД уроков не найден)`);
+
+      rows.push([
+        Markup.button.webApp(
+          `📱 Открыть каталог (${p.section})`,
+          webappSectionUrl(p.section)
+        ),
+      ]);
+      continue;
+    }
+
+    lines.push(`${sectionLabel}: ${p.ord}. ${lesson.title}`);
+
+    const url = postUrl(lesson.message_id) || "https://t.me";
+    rows.push([Markup.button.url(`🔎 Открыть урок (${p.section})`, url)]);
+    rows.push([
+      Markup.button.webApp(`📱 Открыть каталог (${p.section})`, webappSectionUrl(p.section)),
+    ]);
+  }
+
+  // footer actions
+  rows.push([Markup.button.webApp("📱 Открыть каталог", webappMain)]);
+  rows.push([Markup.button.callback("🏠 Меню", "home")]);
+
+  await ctx.reply(["▶️ Продолжить обучение", "", ...lines].join("\n"), Markup.inlineKeyboard(rows));
 }
 
 //
@@ -132,6 +203,24 @@ bot.start(async (ctx) => {
 
 bot.command("whoami", async (ctx) => {
   await ctx.reply(`Твой user id: ${ctx.from.id}`);
+});
+
+// ✅ A4: /continue
+bot.command("continue", async (ctx) => {
+  await handleContinue(ctx);
+});
+
+// ✅ A4: Continue button
+bot.action("continue", async (ctx) => {
+  await ctx.answerCbQuery();
+  await handleContinue(ctx);
+});
+
+// ✅ A4: Home button
+bot.action("home", async (ctx) => {
+  const uid = ctx.from?.id;
+  await ctx.answerCbQuery();
+  await ctx.reply("Меню:", startKeyboard(uid));
 });
 
 bot.command("admin", async (ctx) => {
@@ -223,11 +312,9 @@ bot.on("message", async (ctx) => {
     const m = text.match(/^(\d+)\s*\|\s*(.+)$/);
     if (!m) {
       await ctx.reply(
-        [
-          "❌ Неверный формат.",
-          "Нужно так: 1 | Название урока",
-          "Попробуй ещё раз.",
-        ].join("\n"),
+        ["❌ Неверный формат.", "Нужно так: 1 | Название урока", "Попробуй ещё раз."].join(
+          "\n"
+        ),
         adminKeyboard()
       );
       return;
@@ -310,10 +397,7 @@ bot.on("message", async (ctx) => {
       [Markup.button.callback("🛠 Админ-панель", "admin:open")],
     ]);
 
-    await ctx.reply(
-      ["✅ Урок добавлен:", `${section} / ${ord}`, title].join("\n"),
-      kb
-    );
+    await ctx.reply(["✅ Урок добавлен:", `${section} / ${ord}`, title].join("\n"), kb);
     return;
   }
 
